@@ -35,6 +35,16 @@ section .data
     col_sep db " | "
     col_sep_len equ $ - col_sep
 
+    ; ANSI Color Codes
+    color_red db 0x1B, '[31m'
+    color_red_len equ $ - color_red
+    color_cyan db 0x1B, '[36m'
+    color_cyan_len equ $ - color_cyan
+    color_green db 0x1B, '[32m'
+    color_green_len equ $ - color_green
+    color_reset db 0x1B, '[0m'
+    color_reset_len equ $ - color_reset
+
 ; 为 "用户输入数据" 预留一块内存缓冲区（不初始化，仅分配空间）
 section .bss
     ; 用户输入缓冲区
@@ -75,12 +85,16 @@ game_over_win:
     mov rsi, msg_win        ; 字符串地址
     mov rdx, msg_win_len    ; 字符串长度
     syscall
+    
     ; 输出当前玩家 'X' 或 'O'
+    call set_color_green
     mov rax, 1
     mov rdi, 1
     mov rsi, player         ; 当前玩家 'X' 或 'O'
     mov rdx, 1              ; 长度1
     syscall
+    call set_color_reset
+    
     ; 输出 " wins!\n"
     mov rax, 1
     mov rdi, 1
@@ -178,11 +192,42 @@ print_row_3:
 ; 打印单个格子内容
 print_cell:
     push rbx
+    ; 判断格子内容，设置颜色
+    mov al, [board + rbx]
+    cmp al, 'X'
+    je print_x_color
+    cmp al, 'O'
+    je print_o_color
+    
+    ; 普通颜色打印
+    mov rax, 1
+    mov rdi, 1
+    lea rsi, [board + rbx]
+    mov rdx, 1
+    syscall
+    jmp print_cell_done
+
+; 红色打印X
+print_x_color:
+    call set_color_red
+    mov rax, 1
+    mov rdi, 1
+    lea rsi, [board + rbx]
+    mov rdx, 1
+    syscall
+    call set_color_reset
+    jmp print_cell_done
+; 青色打印O
+print_o_color:
+    call set_color_cyan
     mov rax, 1
     mov rdi, 1
     lea rsi, [board + rbx]  ; 字符串地址
     mov rdx, 1              ; 字符串长度
     syscall
+    call set_color_reset
+
+print_cell_done:
     pop rbx
     ret
 
@@ -222,12 +267,16 @@ get_move:
     mov rsi, msg_prompt
     mov rdx, msg_prompt_len
     syscall
+    
     ; 输出当前玩家 'X' 或 'O'
+    call set_color_green
     mov rax, 1
     mov rdi, 1
     mov rsi, player
     mov rdx, 1
     syscall
+    call set_color_reset
+    
     ; 输出 ", enter a number (1-9): "
     mov rax, 1
     mov rdi, 1
@@ -389,4 +438,36 @@ next_cell:
     jmp check_draw_loop
 draw_found:
     mov rax, 1
+    ret
+
+set_color_red:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, color_red
+    mov rdx, color_red_len
+    syscall
+    ret
+
+set_color_cyan:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, color_cyan
+    mov rdx, color_cyan_len
+    syscall
+    ret
+
+set_color_green:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, color_green
+    mov rdx, color_green_len
+    syscall
+    ret
+
+set_color_reset:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, color_reset
+    mov rdx, color_reset_len
+    syscall
     ret
